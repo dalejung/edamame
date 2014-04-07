@@ -2,9 +2,11 @@ import inspect
 import gc
 import sys
 import os.path
+import difflib
 from collections import OrderedDict
 
 import pandas as pd
+from pandas.core.common import in_ipnb
 
 def is_property(code):
     """
@@ -42,7 +44,9 @@ class Follow(object):
             _get_agg_axis frame.py:4128
             as_matrix generic.py:1938
     """
-    def __init__(self, *args):
+    def __init__(self, depth=1, silent=False):
+        self.depth = depth
+        self.silent = silent
         self.timings = []
         self.frame_cache = {}
         self._caller_cache = {}
@@ -101,6 +105,8 @@ class Follow(object):
 
     def __exit__(self, type, value, traceback):
         sys.setprofile(None)
+        if not self.silent:
+            self.pprint(self.depth)
 
     def file_module_function_of(self, frame):
         code = frame.f_code
@@ -143,7 +149,7 @@ class Follow(object):
 
         return filename, modulename, funcname
 
-    def pprint(self, depth=None):
+    def gen_output(self, depth=None):
         df = self.to_frame()
         mask = df.filename == ''
         mask = mask | df.func_name.isin(['<lambda>', '<genexpr>'])
@@ -167,5 +173,33 @@ class Follow(object):
 
         output = df.apply(format, axis=1, raw=True)
 
-        for s in output.values:
-            print s
+        return output.tolist()
+
+    def pprint(self, depth=None):
+        output = self.gen_output(depth=depth)
+        print "-" * 40
+        print "Follow Path:"
+        print "-" * 40
+        print "\n".join(output)
+
+    def diff(self, right, depth):
+        if in_ipnb():
+            return self._html_diff(right=right, depth=depth)
+        else:
+            return self._text_diff(right=right, depth=depth)
+
+    def _text_diff(self, right, depth):
+        output = self.gen_output(depth)
+        output2 = right.gen_output(depth)
+
+        htmldiff = difflib.HtmlDiff()
+        return '\n'.join(difflib.ndiff(output, output2))
+
+    def _html_diff(self, right, depth):
+        from IPython.core.display import HTML
+        output = self.gen_output(depth)
+        output2 = right.gen_output(depth)
+
+        htmldiff = difflib.HtmlDiff()
+        diff = htmldiff.make_table(output, output2)
+        return HTML(diff)
