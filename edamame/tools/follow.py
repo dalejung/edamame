@@ -192,7 +192,7 @@ class Follow(object):
         if depth:
             mask = mask | (df.indent > depth)
 
-        MSG_FORMAT = "{indent}{func_name} <{filename}:{lineno}>"
+        MSG_FORMAT = "{indent}{func_name}{class_name} <{filename}:{lineno}>"
 
         df = df.loc[~mask]
         def format(row):
@@ -200,11 +200,13 @@ class Follow(object):
             filename = row[1]
             lineno = row[2]
             func_name = row[3]
-            class_name = row[6]
+            class_name = row[6] or ''
             if class_name:
-                func_name = class_name + '.' + func_name
+                class_name = '::{class_name}'.format(class_name=class_name)
+
             msg = MSG_FORMAT.format(indent=" "*indent*4, func_name=func_name,
-                                    filename=filename, lineno=lineno)
+                                    filename=filename, lineno=lineno,
+                                    class_name=class_name)
             return msg
 
         df = df.reset_index(drop=True)
@@ -216,7 +218,7 @@ class Follow(object):
     def pprint(self, depth=None):
         output = self.gen_output(depth=depth)
         print "-" * 40
-        print "Follow Path:"
+        print "Follow Path (depth {depth}):".format(depth=depth)
         print "-" * 40
         print "\n".join(output)
 
