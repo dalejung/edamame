@@ -26,6 +26,34 @@ def is_property(code):
                     if isinstance(p, property)]
     return len(props) == 1
 
+def is_class_dict(dct):
+    if not isinstance(dct, dict):
+        return False
+    if '__dict__' not in dct or not inspect.isgetsetdescriptor(dct['__dict__']):
+        return False
+    return True
+
+def get_parent(code):
+    funcs = [f for f in gc.get_referrers(code)
+                    if inspect.isfunction(f)]
+
+    if len(funcs) != 1:
+        return None
+
+    refs = [f for f in gc.get_referrers(funcs[0])]
+
+    for ref in refs:
+        # assume if that if a dict is pointed to by a class,
+        # that dict is the __dict__
+        if isinstance(ref, dict):
+            parents = [p for p in gc.get_referrers(ref) if isinstance(p, type)]
+            if len(parents) == 1:
+                return parents[0]
+
+        if inspect.ismethod(ref):
+            return ref.im_class
+
+    return None
 
 class Follow(object):
     """
@@ -66,14 +94,20 @@ class Follow(object):
         if is_property(code):
             return
 
+        parent = get_parent(code)
+        parent_name = None
+        if parent:
+            parent_name = parent.__name__
+
         indent, first_parent = self.indent_level(frame)
         f = frame.f_back
         if event == "c_call":
             func_name = arg.__name__
-            fn = (indent, "", 0, func_name, id(frame),id(first_parent))
+            fn = (indent, "", 0, func_name, id(frame),id(first_parent), None)
         elif event == 'call':
             fcode = frame.f_code
-            fn = (indent, fcode.co_filename, fcode.co_firstlineno, fcode.co_name, id(frame), id(first_parent))
+            fn = (indent, fcode.co_filename, fcode.co_firstlineno,
+                  fcode.co_name, id(frame), id(first_parent), parent_name)
 
         self.timings.append(fn)
 
@@ -94,7 +128,8 @@ class Follow(object):
 
     def to_frame(self):
         data = self.timings
-        cols = ['indent', 'filename', 'lineno', 'func_name', 'frame_id', 'parent_id']
+        cols = ['indent', 'filename', 'lineno', 'func_name', 'frame_id',
+                'parent_id', 'parent_name']
         df = pd.DataFrame(data, columns=cols)
         df.loc[:, 'filename'] = df.filename.apply(lambda s: os.path.basename(s))
         return df
@@ -157,7 +192,7 @@ class Follow(object):
         if depth:
             mask = mask | (df.indent > depth)
 
-        MSG_FORMAT = "{indent}{func_name} {filename}:{lineno}"
+        MSG_FORMAT = "{indent}{func_name} <{filename}:{lineno}>"
 
         df = df.loc[~mask]
         def format(row):
@@ -165,6 +200,9 @@ class Follow(object):
             filename = row[1]
             lineno = row[2]
             func_name = row[3]
+            class_name = row[6]
+            if class_name:
+                func_name = class_name + '.' + func_name
             msg = MSG_FORMAT.format(indent=" "*indent*4, func_name=func_name,
                                     filename=filename, lineno=lineno)
             return msg
