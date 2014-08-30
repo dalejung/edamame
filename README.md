@@ -61,3 +61,8 @@ can be run as one pass for
 df.groupby(df.index).agg(user_func)
 ```
 
+# Resources 
+
+Just saw this: 
+
+https://www.youtube.com/watch?v=lTOP_shhVBQ
