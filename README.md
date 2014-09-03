@@ -7,7 +7,7 @@ EDA..[mame](http://japanese.stackexchange.com/questions/8139/what-is-the-meaning
 =======
 
 * All operations should go through a central hub. This allows us to keep track of history and intermediate dataframes. 
-* This would allow us to generate a manifest for all frames. Essentially some source frame with a chain of operations. This would serve as metadata and a unqique ID. 
+* This would allow us to generate a manifest for all frames. Essentially some source frame with a chain of operations. This would serve as metadata and a unique ID. 
 * Source frames would require some sort of unique ID to support this chain.
 * All operations should be deferred if possible. They should return un-evaluated expressions masquerading as real objects.
 * IF an operation, or set of operations, takes enough time to generate, the hub would automatically write to disk. Technically speaking, all we would need to recreate environment would be the source data and the manifest of operations.
@@ -17,6 +17,18 @@ EDA..[mame](http://japanese.stackexchange.com/questions/8139/what-is-the-meaning
 * A frame shouldn't need to be consolidated. i.e. merging two dataframes together shouldn't need a new frame and be properly handled by the evaluater.
 * Possible to do execution in the background during idle cycles. Maybe pre-computing things or taking pre-emptively changing a fortran array to c order?
 * With the manfiest, we can store data in memory so re-executing a script over and over would not cost us processing, kind of like how ipython cells can save you execution, except done automatically.
+
+# Expression
+
+So thinking about this some more. Even if we can't defer an operation, we should always assume we're building up a manifest and then executing that against a specific data set. So in a normal pandas workflow of:
+
+```python
+df = generate_data()
+df2 = df + 1
+df3 = df2 * 2
+```
+
+`df3` is really a manifest of `+2, *2` that is applied to `df`. What is important here is that if everything is immutable, then we know that `df2 * 2 == (df + 1) * 2` or more importantly that `df2 == df + 1` which comes into play when dealing with caching and tracking data as it flows through analytical operations.
 
 # Frontend
 ==========
