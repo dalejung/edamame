@@ -32,7 +32,7 @@ class Tdb(Pdb):
             return self.trace_dispatch
         if event == 'c_return':
             return self.trace_dispatch
-        print 'bdb.Bdb.dispatch: unknown debugging event:', repr(event)
+        print(('bdb.Bdb.dispatch: unknown debugging event:', repr(event)))
         return self.trace_dispatch
 
 
@@ -95,7 +95,7 @@ class Trace(object):
     def __init__(self, *args):
         self.tdb = Tdb(def_colors)
 
-        funcs = filter(callable, args)
+        funcs = list(filter(callable, args))
         for func in funcs:
             self.add_function(func)
 

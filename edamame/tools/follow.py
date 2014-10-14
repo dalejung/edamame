@@ -217,10 +217,10 @@ class Follow(object):
 
     def pprint(self, depth=None):
         output = self.gen_output(depth=depth)
-        print "-" * 40
-        print "Follow Path (depth {depth}):".format(depth=depth)
-        print "-" * 40
-        print "\n".join(output)
+        print(("-" * 40))
+        print(("Follow Path (depth {depth}):".format(depth=depth)))
+        print(("-" * 40))
+        print(("\n".join(output)))
 
     def diff(self, right, depth):
         if in_ipnb():
