@@ -16,7 +16,9 @@ def is_property(code):
     """
     ## use of gc.get_referrers() was suggested by Michael Hudson
     # all functions which refer to this code object
-    funcs = [f for f in gc.get_referrers(code)
+    gc.collect()
+    code_refs = gc.get_referrers(code)
+    funcs = [f for f in code_refs
                     if inspect.isfunction(f)]
     if len(funcs) != 1:
         return False
@@ -72,14 +74,48 @@ class Follow(object):
             _get_agg_axis frame.py:4128
             as_matrix generic.py:1938
     """
-    def __init__(self, depth=1, silent=False):
+    def __init__(self, depth=1, silent=False, parent=False):
         self.depth = depth
         self.silent = silent
         self.timings = []
         self.frame_cache = {}
         self._caller_cache = {}
+        self.parent = parent
+
+        self.stack_depth_cache = {}
+
+    def current_depth(self, frame):
+        current_depth = None
+        i = 0
+        f = frame.f_back
+        while f:
+            i += 1
+            parent_depth = self.stack_depth_cache.get(id(f), None)
+            if parent_depth is not None:
+                current_depth = i + parent_depth
+                break
+            # if we're already past depth, don't bother finding real depth
+            if i > self.depth:
+                return None
+            f = f.f_back
+
+        # should always at least get back to base parent
+        return current_depth
 
     def trace_dispatch(self, frame, event, arg):
+        if len(self.stack_depth_cache) == 0:
+            # __enter__ is the intial frame
+            self.stack_depth_cache[id(frame.f_back)] = 0
+
+        # the lower parts get heavy. don't do anything or frames deeper
+        # than depth
+        current_depth = self.current_depth(frame)
+        if current_depth is None:
+            return
+
+        if current_depth > self.depth:
+            return
+
         if event not in ['call', 'c_call']:
             return
 
@@ -94,7 +130,10 @@ class Follow(object):
         if is_property(code):
             return
 
-        parent_name = get_parent(code)
+        # note that get_parent is supa slow.
+        parent_name = None
+        if self.parent:
+            parent_name = get_parent(code)
 
         indent, first_parent = self.indent_level(frame)
         f = frame.f_back
