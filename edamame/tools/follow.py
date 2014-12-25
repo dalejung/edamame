@@ -48,10 +48,10 @@ def get_parent(code):
         if isinstance(ref, dict):
             parents = [p for p in gc.get_referrers(ref) if isinstance(p, type)]
             if len(parents) == 1:
-                return parents[0]
+                return parents[0].__name__
 
         if inspect.ismethod(ref):
-            return ref.im_class
+            return ref.__qualname__.rsplit('.', 1)[0]
 
     return None
 
@@ -94,10 +94,7 @@ class Follow(object):
         if is_property(code):
             return
 
-        parent = get_parent(code)
-        parent_name = None
-        if parent:
-            parent_name = parent.__name__
+        parent_name = get_parent(code)
 
         indent, first_parent = self.indent_level(frame)
         f = frame.f_back
