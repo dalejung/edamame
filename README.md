@@ -3,6 +3,11 @@ edamame
 
 EDA..[mame](http://japanese.stackexchange.com/questions/8139/what-is-the-meaning-and-etymology-of-the-slang-word-%E3%81%BE%E3%82%81)
 
+# NaginPy
+
+So as of right now, the DSL-ish parts of edamame are being created in [naginpy](https://github.com/dalejung/naginpy). I have too many projects but I like making up names.
+
+
 # Speed
 =======
 
