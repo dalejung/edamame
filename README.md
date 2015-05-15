@@ -7,6 +7,9 @@ EDA..[mame](http://japanese.stackexchange.com/questions/8139/what-is-the-meaning
 
 So as of right now, the DSL-ish parts of edamame are being created in [naginpy](https://github.com/dalejung/naginpy). I have too many projects but I like making up names.
 
+# quantreactor
+
+More names and projects. I'm going to need to map this out on corkboard and threads.
 
 # Speed
 =======
