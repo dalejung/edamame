@@ -1,4 +1,8 @@
+import sys
+from pathlib import Path
+
 from line_profiler import LineProfiler as _LineProfiler
+from line_profiler import show_func
 
 class Profiler(object):
     """
@@ -32,6 +36,7 @@ class Profiler(object):
     """
     def __init__(self, *args):
         self.profile = _LineProfiler()
+        self.func_paths = {}
 
         if len(args) > 0:
             for func in args:
@@ -39,12 +44,49 @@ class Profiler(object):
                     self.add_function(func)
 
     def add_function(self, func):
+        if not hasattr(func, '__code__'):
+            return
+        module = func.__module__
+        code = func.__code__
+        filename = code.co_filename
+        path = Path(filename)
+
+        if not path.is_absolute():
+            root_package = module.split('.')[0]
+            root_module = sys.modules.get(root_package, None)
+            root_path_init = Path(root_module.__file__)
+            root_path = root_path_init.parent.parent
+            abs_filename = root_path.joinpath(filename)
+            self.func_paths[code.co_filename] = str(abs_filename)
+
         self.profile.add_function(func)
+
+    def show_text(self, stats, unit, output_unit=None, stream=None, stripzeros=False):
+        """
+        Show text for the given timings.
+
+        Largely a copy of line_profiler.show_text
+        """
+        if stream is None:
+            stream = sys.stdout
+
+        if output_unit is not None:
+            stream.write('Timer unit: %g s\n\n' % output_unit)
+        else:
+            stream.write('Timer unit: %g s\n\n' % unit)
+
+        for (fn, lineno, name), timings in sorted(stats.items()):
+            # replace with absolute path for cython.
+            abs_path = self.func_paths.get(fn, fn)
+            show_func(abs_path, lineno, name, stats[fn, lineno, name], unit,
+                output_unit=output_unit, stream=stream, stripzeros=stripzeros)
+
 
     def __enter__(self):
         self.profile.enable_by_count()
 
     def __exit__(self, type, value, traceback):
         self.profile.disable_by_count()
-        self.profile.print_stats()
 
+        lstats = self.profile.get_stats()
+        self.show_text(lstats.timings, lstats.unit, output_unit=None, stream=None, stripzeros=False)
